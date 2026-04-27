@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Point of Work Risk Assessment — Mitie</title>
+
+<!-- PWA: Web app manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a2744">
+
+<!-- iOS-specific PWA tags (Add to Home Screen) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="POWRA">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --mitie-navy: #1a2744;
+    --mitie-navy-light: #263559;
+    --mitie-teal: #00b2a9;
+    --mitie-teal-dark: #009990;
+    --mitie-teal-light: #e0f7f5;
+    --mitie-teal-50: #f0fbfa;
+    --amber-500: #f39c12;
+    --amber-100: #fef3cd;
+    --red-600: #c0392b;
+    --red-500: #e74c3c;
+    --red-100: #fadbd8;
+    --green-600: #1e8449;
+    --green-500: #27ae60;
+    --green-100: #d5f5e3;
+    --gray-50: #f8f9fa;
+    --gray-100: #ecf0f1;
+    --gray-200: #d5dbdb;
+    --gray-400: #95a5a6;
+    --gray-600: #636e72;
+    --gray-800: #2d3436;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+
+  .app-header {
+    background: linear-gradient(135deg, var(--mitie-navy) 0%, var(--mitie-navy-light) 60%, var(--mitie-teal-dark) 100%);
+    color: white; padding: 28px 32px; position: relative; overflow: hidden;
+  }
+  .app-header::before { content:''; position:absolute; bottom:0; left:0; right:0; height:4px; background:var(--mitie-teal); }
+  .app-header::after { content:''; position:absolute; top:-50%; right:-10%; width:400px; height:400px; background:radial-gradient(circle,rgba(0,178,169,0.1) 0%,transparent 70%); border-radius:50%; }
+  .app-header h1 { font-family:'Outfit',sans-serif; font-weight:800; font-size:26px; letter-spacing:-0.5px; }
+  .app-header p { opacity:0.75; font-size:14px; margin-top:4px; }
+
+  .container { max-width:1100px; margin:0 auto; padding:24px; }
+
+  .matrix-toggle { display:flex; align-items:center; gap:8px; padding:10px 16px; background:var(--mitie-teal-50); border:1px solid var(--mitie-teal-light); border-radius:var(--radius); cursor:pointer; font-size:13px; font-weight:600; color:var(--mitie-teal-dark); margin-bottom:20px; transition:background .2s; }
+  .matrix-toggle:hover { background:var(--mitie-teal-light); }
+  .matrix-toggle .arrow { transition:transform .2s; display:inline-block; }
+  .matrix-toggle .arrow.open { transform:rotate(90deg); }
+
+  .matrix-panel { display:none; background:white; border:1px solid var(--gray-200); border-radius:var(--radius); padding:20px; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+  .matrix-panel.show { display:block; }
+  .matrix-panel h3 { font-family:'Outfit',sans-serif; font-size:16px; margin-bottom:12px; }
+
+  .matrix-grid { display:grid; grid-template-columns:120px repeat(5,1fr); gap:2px; font-size:12px; text-align:center; }
+  .matrix-grid .header { background:var(--mitie-navy); color:white; padding:8px 4px; font-weight:600; }
+  .matrix-grid .row-label { background:var(--mitie-navy-light); color:white; padding:8px 4px; font-weight:600; text-align:left; padding-left:8px; }
+  .matrix-grid .cell { padding:8px 4px; font-weight:600; }
+  .cell.low { background:var(--green-100); color:var(--green-600); }
+  .cell.med { background:var(--amber-100); color:#b7791f; }
+  .cell.high { background:var(--red-100); color:var(--red-500); }
+
+  .persons-key { margin-top:14px; font-size:12px; color:var(--gray-600); line-height:1.7; }
+  .persons-key strong { color:var(--gray-800); }
+
+  .section { background:white; border-radius:var(--radius); box-shadow:var(--shadow-sm); margin-bottom:20px; overflow:hidden; }
+  .section-header { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:var(--mitie-navy); color:white; font-family:'Outfit',sans-serif; font-weight:700; font-size:15px; }
+  .section-header .badge { background:rgba(0,178,169,0.3); padding:2px 10px; border-radius:20px; font-size:12px; font-weight:500; }
+
+  .hazard-category { padding:14px 20px; border-bottom:1px solid var(--gray-100); }
+  .hazard-category:last-child { border-bottom:none; }
+  .cat-title { font-family:'Outfit',sans-serif; font-weight:700; font-size:14px; color:var(--mitie-teal-dark); margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; }
+  .hazard-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:6px; }
+  .hazard-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:6px; cursor:pointer; transition:background .15s; font-size:13px; }
+  .hazard-item:hover { background:var(--mitie-teal-50); }
+  .hazard-item input[type="checkbox"] { width:16px; height:16px; accent-color:var(--mitie-teal); cursor:pointer; flex-shrink:0; }
+  .hazard-item label { cursor:pointer; line-height:1.3; }
+  .hazard-item .flag { font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; flex-shrink:0; }
+  .flag.hs { background:var(--amber-100); color:#b7791f; position:relative; cursor:help; }
+  .flag.ms { background:var(--red-100); color:var(--red-500); position:relative; cursor:help; }
+
+  /* Custom tooltip - works on hover (desktop) and tap (mobile) */
+  .flag::after {
+    content:attr(data-tip);
+    position:absolute;
+    bottom:calc(100% + 6px);
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--mitie-navy);
+    color:white;
+    padding:6px 10px;
+    border-radius:6px;
+    font-size:11px;
+    font-weight:500;
+    white-space:nowrap;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .2s;
+    z-index:50;
+    box-shadow:var(--shadow-lg);
+  }
+  .flag::before {
+    content:'';
+    position:absolute;
+    bottom:calc(100% + 2px);
+    left:50%;
+    transform:translateX(-50%);
+    border:4px solid transparent;
+    border-top-color:var(--mitie-navy);
+    opacity:0;
+    transition:opacity .2s;
+    z-index:50;
+  }
+  .flag:hover::after, .flag:hover::before,
+  .flag.tip-active::after, .flag.tip-active::before { opacity:1; }
+
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(26,39,68,0.6); backdrop-filter:blur(4px); z-index:1000; justify-content:center; align-items:center; padding:20px; }
+  .modal-overlay.active { display:flex; }
+  .modal { background:white; border-radius:14px; width:100%; max-width:600px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); animation:slideUp .25s ease-out; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  .modal-header { background:linear-gradient(135deg,var(--mitie-navy),var(--mitie-navy-light)); color:white; padding:18px 24px; border-radius:14px 14px 0 0; display:flex; justify-content:space-between; align-items:center; position:relative; }
+  .modal-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--mitie-teal); }
+  .modal-header h2 { font-family:'Outfit',sans-serif; font-size:18px; font-weight:700; }
+  .modal-close { background:rgba(255,255,255,0.15); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:background .2s; }
+  .modal-close:hover { background:rgba(255,255,255,0.3); }
+  .modal-body { padding:24px; }
+
+  .modal-fieldset { border:1.5px solid var(--mitie-teal-light); border-radius:10px; padding:16px 18px 12px; margin-bottom:18px; background:var(--mitie-teal-50); }
+  .modal-fieldset legend { font-family:'Outfit',sans-serif; font-weight:700; font-size:14px; color:var(--mitie-navy); padding:0 8px; }
+  .calc-result { display:flex; align-items:center; gap:10px; margin-top:4px; padding:8px 0 2px; flex-wrap:wrap; }
+  .calc-label { font-size:13px; font-weight:600; color:var(--gray-600); }
+  .calc-value { font-family:'Outfit',sans-serif; font-size:22px; font-weight:800; color:var(--gray-800); min-width:32px; }
+  .score-badge { padding:4px 12px; border-radius:6px; font-size:12px; font-weight:700; }
+  .char-count { text-align:right; font-size:11px; color:var(--gray-400); margin-top:3px; }
+
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:13px; font-weight:600; color:var(--gray-600); margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px; }
+  .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px 12px; border:1.5px solid var(--gray-200); border-radius:8px; font-family:'DM Sans',sans-serif; font-size:14px; transition:border-color .2s; background:var(--gray-50); }
+  .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none; border-color:var(--mitie-teal); background:white; }
+  .form-group textarea { resize:vertical; min-height:70px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .persons-checks { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .persons-checks label {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 12px;
+    border:1.5px solid var(--gray-200); border-radius:6px;
+    cursor:pointer; font-size:13px; font-weight:500;
+    text-transform:none; letter-spacing:0;
+    transition:all .15s;
+    line-height:1;
+  }
+  .persons-checks label:hover { border-color:var(--mitie-teal); background:var(--mitie-teal-50); }
+  /* JS-driven active class instead of :has() for iPad compatibility */
+  .persons-checks label.cb-active { border-color:var(--mitie-teal); background:var(--mitie-teal-light); }
+  .persons-checks input[type="checkbox"] {
+    width:16px; height:16px; margin:0; padding:0;
+    accent-color:var(--mitie-teal);
+    cursor:pointer; flex-shrink:0;
+    vertical-align:middle;
+  }
+  .persons-checks span { vertical-align:middle; }
+
+  .btn { padding:10px 24px; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:all .2s; }
+  .btn-primary { background:var(--mitie-teal); color:white; }
+  .btn-primary:hover { background:var(--mitie-teal-dark); }
+  .btn-secondary { background:var(--gray-100); color:var(--gray-600); }
+  .btn-secondary:hover { background:var(--gray-200); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--gray-100); }
+
+  .results-table-wrap { overflow-x:auto; padding:16px; }
+  .results-table { width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+  .results-table thead th { background:var(--mitie-teal); color:white; padding:12px 14px; font-weight:600; text-align:left; white-space:nowrap; }
+  .results-table thead th:first-child { border-radius:8px 0 0 0; }
+  .results-table thead th:last-child { border-radius:0 8px 0 0; }
+  .results-table tbody tr { transition:background .15s; }
+  .results-table tbody tr:hover { background:var(--mitie-teal-50); }
+  .results-table tbody td { padding:10px 14px; border-bottom:1px solid var(--gray-100); vertical-align:top; }
+  .results-table .score-cell { font-weight:700; text-align:center; }
+  .score-low { color:var(--green-600); }
+  .score-med { color:#b7791f; }
+  .score-high { color:var(--red-500); }
+  .score-breakdown { font-size:10px; font-weight:400; color:var(--gray-400); white-space:nowrap; }
+  .row-actions { display:flex; gap:6px; }
+  .btn-icon { background:none; border:1px solid var(--gray-200); border-radius:6px; padding:4px 8px; cursor:pointer; font-size:14px; transition:all .15s; }
+  .btn-icon:hover { background:var(--gray-100); }
+  .btn-icon.del:hover { background:var(--red-100); border-color:var(--red-500); }
+
+  .empty-state { text-align:center; padding:40px 20px; color:var(--gray-400); }
+  .empty-state .icon { font-size:40px; margin-bottom:10px; }
+  .empty-state p { font-size:14px; }
+
+  .signoff-section { padding:20px; }
+  .signoff-section p { font-size:13px; color:var(--gray-600); line-height:1.6; margin-bottom:14px; }
+  .signoff-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .signoff-row-3 { grid-template-columns:1fr 1fr 1fr; }
+
+  .wo-input-wrap {
+    display:flex; align-items:center;
+    border:1.5px solid var(--gray-200); border-radius:8px;
+    background:var(--gray-50); overflow:hidden;
+    transition:border-color .2s;
+  }
+  .wo-input-wrap:focus-within { border-color:var(--mitie-teal); background:white; }
+  .wo-prefix {
+    padding:10px 0 10px 12px;
+    font-family:'Outfit',sans-serif; font-weight:700; font-size:14px;
+    color:var(--mitie-navy); white-space:nowrap; user-select:none;
+  }
+  .wo-input-wrap input {
+    border:none !important; background:transparent !important;
+    padding-left:2px !important; outline:none !important;
+  }
+
+  /* Validation toast */
+  .validation-toast {
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+    background:var(--mitie-navy); color:white;
+    padding:14px 24px; border-radius:12px;
+    font-size:14px; font-weight:500;
+    box-shadow:var(--shadow-lg);
+    z-index:2000;
+    display:none; max-width:90vw; text-align:center;
+    animation:toastIn .3s ease-out;
+  }
+  .validation-toast.show { display:block; }
+  .validation-toast .toast-icon { font-size:18px; margin-right:8px; vertical-align:middle; }
+  @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+  /* Field error highlight */
+  .field-error { border-color:var(--red-500) !important; background:#fff5f5 !important; }
+  .wo-input-wrap.field-error { border-color:var(--red-500) !important; background:#fff5f5 !important; }
+  .sig-canvas-container.field-error { border-color:var(--red-500) !important; background:#fff5f5 !important; }
+
+  .sig-pad-wrap { margin-top:14px; }
+  .sig-pad-wrap > label { display:block; font-size:13px; font-weight:600; color:var(--gray-600); margin-bottom:5px; text-transform:uppercase; letter-spacing:.3px; }
+  .sig-canvas-container { position:relative; border:2px solid var(--gray-200); border-radius:10px; background:white; overflow:hidden; touch-action:none; }
+  .sig-canvas-container canvas { display:block; width:100%; cursor:crosshair; }
+  .sig-placeholder { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; color:var(--gray-400); pointer-events:none; transition:opacity .2s; }
+  .sig-placeholder.hidden { opacity:0; }
+  .sig-actions { display:flex; gap:8px; margin-top:6px; justify-content:flex-end; }
+  .sig-actions button { padding:5px 14px; border:1px solid var(--gray-200); border-radius:6px; background:var(--gray-50); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; color:var(--gray-600); cursor:pointer; transition:all .15s; }
+  .sig-actions button:hover { background:var(--gray-100); }
+
+  .no-print {}
+
+  /* Force landscape A4 */
+  @page { size: A4 landscape; margin: 10mm; }
+
+  @media print {
+    .no-print { display:none !important; }
+    body { background:white !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .app-header { -webkit-print-color-adjust:exact; print-color-adjust:exact; padding:16px 20px; }
+    .app-header h1 { font-size:20px; }
+    .app-header p { font-size:12px; }
+    .container { max-width:none !important; width:100% !important; padding:8px !important; }
+
+    /* Table: shrink to fit, allow row breaks */
+    .section { box-shadow:none !important; border:1px solid #ddd; margin-bottom:8px; overflow:visible !important; }
+    .results-table-wrap { overflow:visible !important; padding:8px; }
+    .results-table { font-size:10px !important; table-layout:fixed; width:100%; }
+    .results-table thead th { padding:6px 8px; font-size:10px; }
+    .results-table tbody td { padding:6px 8px; word-wrap:break-word; overflow-wrap:break-word; }
+    /* Column widths optimised for landscape */
+    .results-table th:nth-child(1),
+    .results-table td:nth-child(1) { width:14%; }
+    .results-table th:nth-child(2),
+    .results-table td:nth-child(2) { width:10%; }
+    .results-table th:nth-child(3),
+    .results-table td:nth-child(3) { width:10%; }
+    .results-table th:nth-child(4),
+    .results-table td:nth-child(4) { width:28%; }
+    .results-table th:nth-child(5),
+    .results-table td:nth-child(5) { width:28%; }
+    .results-table th:nth-child(6),
+    .results-table td:nth-child(6) { width:10%; }
+
+    /* Allow table rows to break across pages */
+    .results-table thead { display:table-header-group; }
+    .results-table tr { page-break-inside:auto; }
+    .results-table td { page-break-inside:auto; }
+
+    /* Sign-off section */
+    .signoff-section { padding:12px; }
+    .signoff-section p { font-size:11px; }
+    .sig-canvas-container { border:1px solid #999; }
+    .sig-placeholder { display:none !important; }
+    .sig-actions { display:none !important; }
+
+    /* Ensure score breakdowns visible */
+    .score-breakdown { font-size:8px; }
+
+    /* Modal never prints */
+    .modal-overlay { display:none !important; }
+    .validation-toast { display:none !important; }
+    .conditional-hidden { display:none !important; }
+
+    /* RAMS section prints cleanly */
+    .toggle-switch { display:none; }
+    .toggle-yn .yn-no, .toggle-yn .yn-yes { display:none; }
+    .toggle-yn .yn-active { display:inline; font-size:14px; font-weight:700; color:var(--mitie-navy); }
+
+    /* WO field prints cleanly */
+    .wo-input-wrap { border-color:#999; }
+    .signoff-row-3 { grid-template-columns:1fr 1fr 1fr; }
+  }
+
+  /* Toggle switch */
+  .toggle-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px;
+    border-bottom:1px solid var(--gray-100);
+  }
+  .toggle-row:last-child { border-bottom:none; }
+  .toggle-label {
+    font-size:14px; font-weight:600; color:var(--gray-800);
+    flex:1; padding-right:16px; line-height:1.4;
+  }
+  .toggle-switch {
+    position:relative; width:56px; height:30px; flex-shrink:0;
+  }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .toggle-slider {
+    position:absolute; inset:0; cursor:pointer;
+    background:var(--gray-200); border-radius:30px;
+    transition:background .25s;
+  }
+  .toggle-slider::before {
+    content:''; position:absolute;
+    width:24px; height:24px; left:3px; bottom:3px;
+    background:white; border-radius:50%;
+    transition:transform .25s;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle-switch input:checked + .toggle-slider { background:var(--mitie-teal); }
+  .toggle-switch input:checked + .toggle-slider::before { transform:translateX(26px); }
+  .toggle-yn {
+    display:flex; gap:6px; align-items:center; margin-left:10px;
+    font-size:12px; font-weight:600; color:var(--gray-400); min-width:50px;
+  }
+  .toggle-yn .yn-yes, .toggle-yn .yn-no { transition:color .2s; }
+  .toggle-yn .yn-active { color:var(--mitie-teal); }
+
+  /* RAMS ref input */
+  .rams-ref-row {
+    padding:0 20px 14px;
+  }
+  .rams-ref-row .form-group { margin-bottom:0; }
+
+  /* Conditional sections */
+  .conditional-hidden { display:none !important; }
+
+  .print-btn { position:fixed; bottom:24px; right:24px; background:var(--mitie-navy); color:white; border:none; padding:12px 20px; border-radius:30px; font-family:'DM Sans',sans-serif; font-weight:600; font-size:14px; cursor:pointer; box-shadow:var(--shadow-lg); z-index:100; display:flex; align-items:center; gap:8px; transition:background .2s; }
+  .print-btn:hover { background:var(--mitie-teal-dark); }
+
+  @media (max-width:600px) {
+    .container { padding:12px; }
+    .hazard-grid { grid-template-columns:1fr; }
+    .form-row { grid-template-columns:1fr; }
+    .signoff-row, .signoff-row-3 { grid-template-columns:1fr; }
+    .modal { max-height:95vh; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Point of Work Risk Assessment</h1>
+  <p>Select significant risks, complete details, and build your assessment</p>
+</div>
+
+<div class="container">
+  <div class="matrix-toggle no-print" onclick="toggleMatrix()">
+    <span class="arrow" id="matrixArrow">&#9654;</span>
+    Risk Evaluation Matrix &amp; Persons Key
+  </div>
+  <div class="matrix-panel" id="matrixPanel">
+    <h3>Risk Evaluation Matrix</h3>
+    <div class="matrix-grid">
+      <div class="header">Severity / Likelihood</div>
+      <div class="header">Improbable</div><div class="header">Low</div><div class="header">Medium</div><div class="header">High</div><div class="header">Near Certainty</div>
+      <div class="row-label">Minor</div>
+      <div class="cell low">1</div><div class="cell low">2</div><div class="cell low">3</div><div class="cell low">4</div><div class="cell med">5</div>
+      <div class="row-label">Moderate</div>
+      <div class="cell low">2</div><div class="cell low">4</div><div class="cell med">6</div><div class="cell med">8</div><div class="cell high">10</div>
+      <div class="row-label">Serious</div>
+      <div class="cell low">3</div><div class="cell med">6</div><div class="cell high">9</div><div class="cell high">12</div><div class="cell high">15</div>
+      <div class="row-label">Very Serious</div>
+      <div class="cell low">4</div><div class="cell med">8</div><div class="cell high">12</div><div class="cell high">16</div><div class="cell high">20</div>
+      <div class="row-label">Fatality</div>
+      <div class="cell med">5</div><div class="cell high">10</div><div class="cell high">15</div><div class="cell high">20</div><div class="cell high">25</div>
+    </div>
+    <div class="persons-key">
+      <strong>Persons Affected Key:</strong><br>
+      <strong>S</strong> = Self &nbsp;|&nbsp;
+      <strong>C</strong> = Client / Staff / Public &nbsp;|&nbsp;
+      <strong>O</strong> = Subcontractors / Other Workers &nbsp;|&nbsp;
+      <strong>Y</strong> = Young Workers &nbsp;|&nbsp;
+      <strong>D</strong> = Disabled
+    </div>
+  </div>
+
+  <!-- RAMS Questions -->
+  <div class="section">
+    <div class="section-header">Pre-Assessment Questions</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Are you working to a Generic set of RAMS?</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="ramsToggle" onchange="onRamsToggle()">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="toggle-yn" id="ramsYN">
+        <span class="yn-no yn-active">No</span>
+        <span class="yn-yes">Yes</span>
+      </div>
+    </div>
+    <div id="ramsRefRow" class="rams-ref-row conditional-hidden">
+      <div class="form-group">
+        <label for="ramsRef">Please input Generic RAMS reference</label>
+        <input type="text" id="ramsRef" placeholder="e.g. RAMS-2024-001">
+      </div>
+    </div>
+    <div id="sigRisksRow" class="toggle-row conditional-hidden" style="border-top:1px solid var(--gray-100);">
+      <span class="toggle-label">Are there any significant risks found, that aren't covered within the Generic RAMS?</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="sigRisksToggle" onchange="onSigRisksToggle()">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="toggle-yn" id="sigRisksYN">
+        <span class="yn-no yn-active">No</span>
+        <span class="yn-yes">Yes</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section no-print" id="hazardSection">
+    <div class="section-header">
+      Step 1 — Select Significant Risks Present
+      <span class="badge" id="selectedCount">0 selected</span>
+    </div>
+    <div class="hazard-category"><div class="cat-title">Physical Injury Hazards</div><div class="hazard-grid" id="cat-physical"></div></div>
+    <div class="hazard-category"><div class="cat-title">Physical Agents</div><div class="hazard-grid" id="cat-agents"></div></div>
+    <div class="hazard-category"><div class="cat-title">Electrical</div><div class="hazard-grid" id="cat-electrical"></div></div>
+    <div class="hazard-category"><div class="cat-title">Hazardous Substances</div><div class="hazard-grid" id="cat-substances"></div></div>
+    <div class="hazard-category"><div class="cat-title">Miscellaneous</div><div class="hazard-grid" id="cat-misc"></div></div>
+  </div>
+
+  <div class="section" id="resultsSection">
+    <div class="section-header">
+      Risk Assessment Summary
+      <span class="badge" id="assessedCount">0 assessed</span>
+    </div>
+    <div class="results-table-wrap">
+      <table class="results-table" id="resultsTable">
+        <thead><tr>
+          <th>Risk Title</th><th>Initial Risk Score</th><th>Persons Affected</th><th>Risk Details</th><th>Control Measures</th><th>Residual Risk Score</th><th class="no-print">Actions</th>
+        </tr></thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">
+        <div class="icon">📋</div>
+        <p>No risks assessed yet.<br>Select hazards above and complete the assessment form.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Sign-Off</div>
+    <div class="signoff-section">
+      <p>I confirm that all residual risk evaluations are acceptable (rated as 5 or below) after ALL the control measures have been implemented. If the risk evaluation remains at 6 or above after all the control measures have been implemented, inform Line Management before undertaking the work.</p>
+      <div class="signoff-row signoff-row-3">
+        <div class="form-group">
+          <label>Work Order Number</label>
+          <div class="wo-input-wrap">
+            <span class="wo-prefix">WO-</span>
+            <input type="text" id="signWO" placeholder="123456" maxlength="10" inputmode="numeric" pattern="[0-9]*">
+          </div>
+        </div>
+        <div class="form-group"><label>Name</label><input type="text" id="signName" placeholder="Full name"></div>
+        <div class="form-group"><label>Date</label><input type="date" id="signDate"></div>
+      </div>
+      <div class="sig-pad-wrap">
+        <label>Signature</label>
+        <div class="sig-canvas-container" id="sigContainer">
+          <canvas id="sigCanvas" height="160"></canvas>
+          <div class="sig-placeholder" id="sigPlaceholder">✍️ Sign here with finger or stylus</div>
+        </div>
+        <div class="sig-actions no-print">
+          <button onclick="clearSignature()">Clear</button>
+          <button onclick="undoSignature()">Undo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="print-btn no-print" onclick="validateAndPrint()">📄 Save as PDF</button>
+<div class="validation-toast" id="validationToast"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Assess Risk</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <fieldset class="modal-fieldset">
+        <legend>Initial Risk Assessment</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="initSeverity">Severity of harm</label>
+            <select id="initSeverity" onchange="calcScore('init')">
+              <option selected disabled value="">Select</option>
+              <option value="1">Minor</option><option value="2">Moderate</option><option value="3">Serious</option><option value="4">Very Serious</option><option value="5">Fatality</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="initLikelihood">Likelihood of injury</label>
+            <select id="initLikelihood" onchange="calcScore('init')">
+              <option selected disabled value="">Select</option>
+              <option value="1">Improbable</option><option value="2">Low</option><option value="3">Medium</option><option value="4">High</option><option value="5">Near Certainty</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result">
+          <span class="calc-label">Risk Score:</span>
+          <span class="calc-value" id="initScoreVal">—</span>
+          <span class="score-badge" id="initBadge"></span>
+        </div>
+      </fieldset>
+
+      <div class="form-group">
+        <label>Who will this risk affect?</label>
+        <div class="persons-checks" id="personsChecks">
+          <label><input type="checkbox" value="S"><span>Self</span></label>
+          <label><input type="checkbox" value="C"><span>Client / Staff / Public</span></label>
+          <label><input type="checkbox" value="O"><span>Subcontractors / Other Workers</span></label>
+          <label><input type="checkbox" value="Y"><span>Young Workers</span></label>
+          <label><input type="checkbox" value="D"><span>Disabled</span></label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="modalDetails">Detail significant risk</label>
+        <textarea id="modalDetails" placeholder="Describe the specific risk…" maxlength="200" rows="3"></textarea>
+        <div class="char-count"><span id="detailsCount">0</span>/200</div>
+      </div>
+      <div class="form-group">
+        <label for="modalControls">Detail control measures</label>
+        <textarea id="modalControls" placeholder="List the control measures…" maxlength="200" rows="3"></textarea>
+        <div class="char-count"><span id="controlsCount">0</span>/200</div>
+      </div>
+
+      <fieldset class="modal-fieldset">
+        <legend>Risk Assessment with Control Measures in Place</legend>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="resSeverity">Reviewed severity</label>
+            <select id="resSeverity" onchange="calcScore('res')">
+              <option selected disabled value="">Select</option>
+              <option value="1">Minor</option><option value="2">Moderate</option><option value="3">Serious</option><option value="4">Very Serious</option><option value="5">Fatality</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="resLikelihood">Reviewed likelihood</label>
+            <select id="resLikelihood" onchange="calcScore('res')">
+              <option selected disabled value="">Select</option>
+              <option value="1">Improbable</option><option value="2">Low</option><option value="3">Medium</option><option value="4">High</option><option value="5">Near Certainty</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result">
+          <span class="calc-label">Residual Score:</span>
+          <span class="calc-value" id="resScoreVal">—</span>
+          <span class="score-badge" id="resBadge"></span>
+        </div>
+      </fieldset>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="modalSave" onclick="saveAssessment()">Add to Assessment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const hazards = {
+  'cat-physical': ['Moving parts of machinery','Hand/power tools','Fall from heights','Access equipment','Working above water','Working above people','Slips/trips & falls (same level)','Manual handling','Falling objects/materials','Lifting equipment / Crane swept areas'],
+  'cat-agents': [{name:'Ionising Radiation',flag:'hs'},'Lasers / Microwaves',{name:'Ultraviolet / Infra Red',flag:'hs'},'Hot / Cold Objects','Temperature',{name:'Noise',flag:'hs'},{name:'Vibration',flag:'hs'},'Weather Conditions','Lone Working'],
+  'cat-electrical': [{name:'High Voltage',flag:'ms'},'Shock / Burns / Explosion',{name:'Overhead / Buried Cables',flag:'ms'},'Poor Lighting Levels'],
+  'cat-substances': [{name:'Asbestos / Chemicals',flag:'hs'},'Micro organisms','Vermin / Weils disease','Fume / Grease / Vapour / Dust','Legionella','Flammable substances','Explosive substances',{name:'Confined Space',flag:'ms'},{name:'Pressure Systems',flag:'ms'},{name:'Hot Works / Fire',flag:'ms'},{name:'Excavation / Buried Services',flag:'ms'}],
+  'cat-misc': ['Restricted Access / Egress','Overhead Obstructions','Nuisance to Neighbours','Transport (Road/Rail)','Disturbance of Wildlife','Waste Disposal','Environmental Impact','Violence / Animals']
+};
+const sevLabels = {'1':'Minor','2':'Moderate','3':'Serious','4':'Very Serious','5':'Fatality'};
+const likLabels = {'1':'Improbable','2':'Low','3':'Medium','4':'High','5':'Near Certainty'};
+
+let assessments = {};
+let editingHazard = null;
+
+/* ---- SCORE LOGIC ---- */
+// 3-tier colour for score number: ≤4 green, 5–8 amber, 9+ red
+function getScoreColor(v){
+  v=parseInt(v);
+  if(v<=4) return 'low';
+  if(v<=8) return 'med';
+  return 'high';
+}
+function scoreColorVar(v){
+  v=parseInt(v);
+  if(v<=4) return 'var(--green-600)';
+  if(v<=8) return '#b7791f';
+  return 'var(--red-500)';
+}
+
+// Initial labels: ≤5 no label, >5 red "Unacceptable"
+function getInitScoreLabel(v){ return parseInt(v)<=5?'':'Unacceptable — requires control measures'; }
+// Residual labels: ≤5 green "Acceptable", >5 red "STOP"
+function getResScoreLabel(v){ return parseInt(v)<=5?'Acceptable':'STOP — Report to line manager'; }
+
+function applyBadge(el,score,type){
+  if(!score){el.textContent='';el.style.background='transparent';el.style.color='transparent';return;}
+  const isInit=type==='init';
+  const lbl=isInit?getInitScoreLabel(score):getResScoreLabel(score);
+  if(!lbl){el.textContent='';el.style.background='transparent';el.style.color='transparent';return;}
+  // Label colour: init >5 always red, residual ≤5 green / >5 red
+  const isAcceptable=parseInt(score)<=5;
+  el.textContent=lbl;
+  if(isInit){
+    el.style.background='var(--red-100)';el.style.color='var(--red-500)';
+  }else{
+    el.style.background=isAcceptable?'var(--green-100)':'var(--red-100)';
+    el.style.color=isAcceptable?'var(--green-600)':'var(--red-500)';
+  }
+}
+
+function calcScore(prefix){
+  const sev=document.getElementById(prefix+'Severity').value;
+  const lik=document.getElementById(prefix+'Likelihood').value;
+  const valEl=document.getElementById(prefix+'ScoreVal');
+  const badgeEl=document.getElementById(prefix+'Badge');
+  if(sev&&lik){
+    const score=parseInt(sev)*parseInt(lik);
+    valEl.textContent=score;
+    valEl.style.color=scoreColorVar(score);
+    applyBadge(badgeEl,score,prefix);
+  }else{
+    valEl.textContent='—';valEl.style.color='var(--gray-800)';
+    applyBadge(badgeEl,null,prefix);
+  }
+}
+
+/* ---- CHAR COUNTERS ---- */
+document.getElementById('modalDetails').addEventListener('input',function(){document.getElementById('detailsCount').textContent=this.value.length;});
+document.getElementById('modalControls').addEventListener('input',function(){document.getElementById('controlsCount').textContent=this.value.length;});
+
+/* ---- BUILD HAZARDS ---- */
+function buildHazards(){
+  Object.entries(hazards).forEach(([catId,items])=>{
+    const c=document.getElementById(catId);
+    items.forEach(item=>{
+      const name=typeof item==='string'?item:item.name;
+      const flag=typeof item==='object'?item.flag:null;
+      const div=document.createElement('div');div.className='hazard-item';
+      const cb=document.createElement('input');cb.type='checkbox';
+      cb.id='haz_'+name.replace(/[^a-zA-Z0-9]/g,'_');
+      cb.dataset.hazard=name;cb.addEventListener('change',onHazardToggle);
+      const lbl=document.createElement('label');lbl.htmlFor=cb.id;lbl.textContent=name;
+      div.appendChild(cb);div.appendChild(lbl);
+      if(flag){const s=document.createElement('span');s.className='flag '+flag;s.textContent=flag==='hs'?'H/S':'M/S';s.title=flag==='hs'?'May require Health Surveillance — refer to Safety Advisor':'May require a Method Statement and Permit to Work';s.setAttribute('data-tip',s.title);s.addEventListener('click',function(e){e.stopPropagation();document.querySelectorAll('.flag.tip-active').forEach(f=>{if(f!==s)f.classList.remove('tip-active');});s.classList.toggle('tip-active');});div.appendChild(s);}
+      c.appendChild(div);
+    });
+  });
+}
+
+function onHazardToggle(e){
+  const name=e.target.dataset.hazard;
+  if(e.target.checked){openModal(name);}else{delete assessments[name];renderTable();}
+  updateSelectedCount();
+}
+function updateSelectedCount(){
+  document.getElementById('selectedCount').textContent=document.querySelectorAll('.hazard-item input:checked').length+' selected';
+}
+
+/* ---- MODAL ---- */
+function openModal(name,editing=false){
+  editingHazard=name;
+  document.getElementById('modalTitle').textContent=name;
+  const a=assessments[name];
+  document.getElementById('initSeverity').value=a?a.initSev:'';
+  document.getElementById('initLikelihood').value=a?a.initLik:'';
+  document.getElementById('resSeverity').value=a?a.resSev:'';
+  document.getElementById('resLikelihood').value=a?a.resLik:'';
+  document.getElementById('modalDetails').value=a?a.details:'';
+  document.getElementById('modalControls').value=a?a.controls:'';
+  document.getElementById('detailsCount').textContent=a?a.details.length:0;
+  document.getElementById('controlsCount').textContent=a?a.controls.length:0;
+  document.querySelectorAll('#personsChecks input').forEach(cb=>{
+    const checked=a?a.persons.includes(cb.value):false;
+    cb.checked=checked;
+    cb.closest('label').classList.toggle('cb-active',checked);
+  });
+  calcScore('init');calcScore('res');
+  document.getElementById('modalSave').textContent=editing?'Update Assessment':'Add to Assessment';
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('active');
+  if(editingHazard&&!assessments[editingHazard]){
+    const cb=document.querySelector(`input[data-hazard="${editingHazard}"]`);
+    if(cb)cb.checked=false;updateSelectedCount();
+  }
+  editingHazard=null;
+}
+
+function saveAssessment(){
+  const initSev=document.getElementById('initSeverity').value;
+  const initLik=document.getElementById('initLikelihood').value;
+  const resSev=document.getElementById('resSeverity').value;
+  const resLik=document.getElementById('resLikelihood').value;
+  const details=document.getElementById('modalDetails').value.trim();
+  const controls=document.getElementById('modalControls').value.trim();
+  const persons=[];
+  document.querySelectorAll('#personsChecks input:checked').forEach(cb=>persons.push(cb.value));
+  if(!initSev||!initLik||!resSev||!resLik||!details||!controls||persons.length===0){alert('Please complete all fields before saving.');return;}
+  assessments[editingHazard]={initSev,initLik,initial:parseInt(initSev)*parseInt(initLik),resSev,resLik,residual:parseInt(resSev)*parseInt(resLik),details,controls,persons};
+  closeModal();renderTable();
+}
+
+/* ---- TABLE ---- */
+function renderTable(){
+  const tbody=document.getElementById('resultsBody');
+  const empty=document.getElementById('emptyState');
+  const keys=Object.keys(assessments);
+  document.getElementById('assessedCount').textContent=keys.length+' assessed';
+  if(keys.length===0){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=keys.map(name=>{
+    const a=assessments[name];
+    const iColor=getScoreColor(a.initial);
+    const rColor=getScoreColor(a.residual);
+    const iLbl=getInitScoreLabel(a.initial);
+    const rLbl=getResScoreLabel(a.residual);
+    const rLblColor=parseInt(a.residual)<=5?'var(--green-600)':'var(--red-500)';
+    return `<tr>
+      <td><strong>${name}</strong></td>
+      <td class="score-cell score-${iColor}">${a.initial}<br><span class="score-breakdown">${sevLabels[a.initSev]} × ${likLabels[a.initLik]}</span>${iLbl?'<br><span style="font-size:10px;font-weight:700;color:var(--red-500)">'+iLbl+'</span>':''}</td>
+      <td>${a.persons.join(', ')}</td>
+      <td>${a.details}</td>
+      <td>${a.controls}</td>
+      <td class="score-cell score-${rColor}">${a.residual}<br><span class="score-breakdown">${sevLabels[a.resSev]} × ${likLabels[a.resLik]}</span><br><span style="font-size:10px;font-weight:700;color:${rLblColor}">${rLbl}</span></td>
+      <td class="no-print"><div class="row-actions">
+        <button class="btn-icon" onclick="editRow('${name.replace(/'/g,"\\'")}')" title="Edit">✏️</button>
+        <button class="btn-icon del" onclick="deleteRow('${name.replace(/'/g,"\\'")}')" title="Remove">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function editRow(n){openModal(n,true);}
+function deleteRow(n){delete assessments[n];const cb=document.querySelector(`input[data-hazard="${n}"]`);if(cb)cb.checked=false;updateSelectedCount();renderTable();}
+function toggleMatrix(){document.getElementById('matrixPanel').classList.toggle('show');document.getElementById('matrixArrow').classList.toggle('open');}
+
+/* ==================== SIGNATURE PAD ==================== */
+const sigCanvas=document.getElementById('sigCanvas');
+const sigCtx=sigCanvas.getContext('2d');
+const sigContainer=document.getElementById('sigContainer');
+const sigPlaceholder=document.getElementById('sigPlaceholder');
+let isDrawing=false, sigStrokes=[], currentStroke=[];
+
+function resizeSigCanvas(){
+  const rect=sigContainer.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  sigCanvas.width=rect.width*dpr;
+  sigCanvas.height=160*dpr;
+  sigCanvas.style.height='160px';
+  sigCtx.scale(dpr,dpr);
+  redrawStrokes();
+}
+function redrawStrokes(){
+  const rect=sigContainer.getBoundingClientRect();
+  sigCtx.clearRect(0,0,rect.width,160);
+  sigCtx.lineWidth=2.5;sigCtx.lineCap='round';sigCtx.lineJoin='round';sigCtx.strokeStyle='#1a2744';
+  sigStrokes.forEach(stroke=>{
+    if(stroke.length<2)return;
+    sigCtx.beginPath();sigCtx.moveTo(stroke[0].x,stroke[0].y);
+    for(let i=1;i<stroke.length;i++)sigCtx.lineTo(stroke[i].x,stroke[i].y);
+    sigCtx.stroke();
+  });
+}
+function getPos(e){const rect=sigCanvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:t.clientX-rect.left,y:t.clientY-rect.top};}
+function startDraw(e){e.preventDefault();isDrawing=true;currentStroke=[getPos(e)];sigPlaceholder.classList.add('hidden');}
+function draw(e){
+  if(!isDrawing)return;e.preventDefault();
+  const pos=getPos(e);currentStroke.push(pos);
+  sigCtx.lineWidth=2.5;sigCtx.lineCap='round';sigCtx.lineJoin='round';sigCtx.strokeStyle='#1a2744';
+  sigCtx.beginPath();const prev=currentStroke[currentStroke.length-2];
+  sigCtx.moveTo(prev.x,prev.y);sigCtx.lineTo(pos.x,pos.y);sigCtx.stroke();
+}
+function endDraw(){if(!isDrawing)return;isDrawing=false;if(currentStroke.length>0)sigStrokes.push([...currentStroke]);currentStroke=[];}
+
+sigCanvas.addEventListener('mousedown',startDraw);
+sigCanvas.addEventListener('mousemove',draw);
+sigCanvas.addEventListener('mouseup',endDraw);
+sigCanvas.addEventListener('mouseleave',endDraw);
+sigCanvas.addEventListener('touchstart',startDraw,{passive:false});
+sigCanvas.addEventListener('touchmove',draw,{passive:false});
+sigCanvas.addEventListener('touchend',endDraw);
+
+function clearSignature(){sigStrokes=[];currentStroke=[];const rect=sigContainer.getBoundingClientRect();sigCtx.clearRect(0,0,rect.width,160);sigPlaceholder.classList.remove('hidden');}
+function undoSignature(){if(sigStrokes.length===0)return;sigStrokes.pop();redrawStrokes();if(sigStrokes.length===0)sigPlaceholder.classList.remove('hidden');}
+
+/* ==================== RAMS TOGGLE LOGIC ==================== */
+function updateYN(toggleId, ynId){
+  const checked=document.getElementById(toggleId).checked;
+  const yn=document.getElementById(ynId);
+  yn.querySelector('.yn-no').classList.toggle('yn-active',!checked);
+  yn.querySelector('.yn-yes').classList.toggle('yn-active',checked);
+}
+
+function onRamsToggle(){
+  updateYN('ramsToggle','ramsYN');
+  const ramsYes=document.getElementById('ramsToggle').checked;
+  const ramsRefRow=document.getElementById('ramsRefRow');
+  const sigRisksRow=document.getElementById('sigRisksRow');
+  const hazardSection=document.getElementById('hazardSection');
+  const resultsSection=document.getElementById('resultsSection');
+
+  if(ramsYes){
+    // Show RAMS ref and sig risks question
+    ramsRefRow.classList.remove('conditional-hidden');
+    sigRisksRow.classList.remove('conditional-hidden');
+    // Re-evaluate sig risks toggle
+    onSigRisksToggle();
+  }else{
+    // No RAMS — hide Q2 & Q3, show risk grid normally
+    ramsRefRow.classList.add('conditional-hidden');
+    sigRisksRow.classList.add('conditional-hidden');
+    hazardSection.classList.remove('conditional-hidden');
+    resultsSection.classList.remove('conditional-hidden');
+    // Reset sig risks toggle
+    document.getElementById('sigRisksToggle').checked=false;
+    updateYN('sigRisksToggle','sigRisksYN');
+  }
+}
+
+function onSigRisksToggle(){
+  updateYN('sigRisksToggle','sigRisksYN');
+  const sigRisksYes=document.getElementById('sigRisksToggle').checked;
+  const hazardSection=document.getElementById('hazardSection');
+  const resultsSection=document.getElementById('resultsSection');
+
+  if(sigRisksYes){
+    // Show risk selection grid and results
+    hazardSection.classList.remove('conditional-hidden');
+    resultsSection.classList.remove('conditional-hidden');
+  }else{
+    // Hide risk grid — skip to sign-off
+    hazardSection.classList.add('conditional-hidden');
+    resultsSection.classList.add('conditional-hidden');
+  }
+}
+
+/* ==================== VALIDATION ==================== */
+function showToast(msg){
+  const toast=document.getElementById('validationToast');
+  toast.innerHTML='<span class="toast-icon">⚠️</span>'+msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer=setTimeout(()=>toast.classList.remove('show'),4000);
+}
+
+function clearErrors(){
+  document.querySelectorAll('.field-error').forEach(el=>el.classList.remove('field-error'));
+}
+
+function validateAndPrint(){
+  clearErrors();
+  const errors=[];
+
+  const ramsYes=document.getElementById('ramsToggle').checked;
+  const sigRisksYes=document.getElementById('sigRisksToggle').checked;
+  const risksRequired=!ramsYes || (ramsYes && sigRisksYes);
+
+  // 1. If RAMS yes, require RAMS reference
+  if(ramsYes){
+    const ramsRef=document.getElementById('ramsRef');
+    if(!ramsRef.value.trim()){
+      errors.push('Generic RAMS reference is required');
+      ramsRef.classList.add('field-error');
+    }
+  }
+
+  // 2. If risks are required, check at least one assessed
+  if(risksRequired && Object.keys(assessments).length===0){
+    errors.push('At least one risk must be assessed');
+  }
+
+  // 3. Check Work Order number
+  const woInput=document.getElementById('signWO');
+  const woVal=woInput.value.trim();
+  if(!woVal){
+    errors.push('Work Order number is required');
+    document.querySelector('.wo-input-wrap').classList.add('field-error');
+  }else if(!/^\d+$/.test(woVal)){
+    errors.push('Work Order number must contain only digits');
+    document.querySelector('.wo-input-wrap').classList.add('field-error');
+  }
+
+  // 4. Check name
+  const nameInput=document.getElementById('signName');
+  if(!nameInput.value.trim()){
+    errors.push('Name is required');
+    nameInput.classList.add('field-error');
+  }
+
+  // 5. Check signature
+  if(sigStrokes.length===0){
+    errors.push('Signature is required');
+    document.getElementById('sigContainer').classList.add('field-error');
+  }
+
+  if(errors.length>0){
+    showToast(errors[0]);
+    // Scroll to the relevant field
+    const firstErr=errors[0];
+    if(firstErr.includes('RAMS reference')){
+      document.getElementById('ramsRef').scrollIntoView({behavior:'smooth',block:'center'});
+    }else if(firstErr.includes('risk must be assessed')){
+      // stay at top
+    }else{
+      document.querySelector('.signoff-section').scrollIntoView({behavior:'smooth',block:'center'});
+    }
+    return;
+  }
+
+  // Set filename via page title — use events for iPad Edge compatibility
+  const wo=document.getElementById('signWO').value.trim();
+  const pdfName='Point of Work RA - WO-'+wo;
+  document.title=pdfName;
+
+  // For iPad Edge share sheet: also set filename hint meta tag
+  let metaFilename=document.querySelector('meta[name="filename"]');
+  if(!metaFilename){metaFilename=document.createElement('meta');metaFilename.name='filename';document.head.appendChild(metaFilename);}
+  metaFilename.content=pdfName+'.pdf';
+
+  window.print();
+}
+
+// Restore title after print (works on iPad when share sheet closes)
+const _origTitle='Point of Work Risk Assessment — Mitie';
+window.addEventListener('afterprint',function(){document.title=_origTitle;});
+
+/* ---- PERSONS CHECKBOX TOGGLE (iPad compatible) ---- */
+document.getElementById('personsChecks').addEventListener('change',function(e){
+  if(e.target.type==='checkbox'){
+    const label=e.target.closest('label');
+    if(label) label.classList.toggle('cb-active',e.target.checked);
+  }
+});
+
+/* ---- INIT ---- */
+buildHazards();
+document.getElementById('signDate').valueAsDate=new Date();
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+resizeSigCanvas();
+window.addEventListener('resize',resizeSigCanvas);
+// Dismiss tooltips on tap elsewhere
+document.addEventListener('click',function(){document.querySelectorAll('.flag.tip-active').forEach(f=>f.classList.remove('tip-active'));});
+</script>
+<!-- PWA: Service Worker registration for offline use -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('Service Worker registered:', reg.scope))
+        .catch(err => console.warn('Service Worker registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
